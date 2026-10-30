@@ -1,0 +1,1 @@
+import{c as e}from"./firebase-vendor-CF7gkzmI.js";import"./firebase-vendor-Dz0lWHhL.js";import"./firebase-vendor-B3C-ln9F.js";e(`firebase`,`13.1.0`,`app`);
