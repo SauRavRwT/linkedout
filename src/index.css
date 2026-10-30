@@ -1,0 +1,62 @@
+:root {
+  font-family: Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --heading: Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --serif: Iowan Old Style, "Palatino Linotype", "Book Antiqua", Georgia, serif;
+  --mono: ui-monospace, SFMono-Regular, Consolas, monospace;
+  color: var(--page-text, #24213b);
+  background: var(--page-background, #f7f6fb);
+  color-scheme: light;
+  --page-text: #24213b;
+  --page-background: #f7f6fb;
+  --page-gradient:
+    radial-gradient(ellipse at 86% 6%, rgba(212, 204, 255, .33), transparent 31rem),
+    radial-gradient(ellipse at 6% 39%, rgba(232, 224, 255, .4), transparent 30rem),
+    linear-gradient(180deg, #f8f7fc 0%, #f5f4fa 100%);
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  font-optical-sizing: auto;
+  font-weight: 400;
+  scroll-behavior: smooth;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  min-width: 320px;
+  min-height: 100vh;
+  margin: 0;
+  background: var(--page-gradient);
+}
+
+button,
+input,
+textarea {
+  font: inherit;
+}
+
+button {
+  color: inherit;
+}
+
+::selection {
+  color: #35305c;
+  background: rgba(165, 153, 241, .3);
+}
+
+#root {
+  min-height: 100vh;
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --page-text: #e7e4f4;
+  --page-background: #14131c;
+  --page-gradient:
+    radial-gradient(ellipse at 86% 6%, rgba(89, 72, 157, .2), transparent 31rem),
+    radial-gradient(ellipse at 6% 39%, rgba(73, 58, 123, .18), transparent 30rem),
+    linear-gradient(180deg, #171621 0%, #111119 100%);
+}
