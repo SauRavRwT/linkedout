@@ -81,9 +81,12 @@
     inset 0 1px 0 rgba(255, 255, 255, 0.55);
 }
 
-.brand-mark svg {
-  width: 25px;
-  height: 25px;
+.brand-monogram {
+  font-size: 13px;
+  font-weight: 750;
+  letter-spacing: -1px;
+  line-height: 1;
+  font-family: var(--mono);
 }
 
 .top-nav {
@@ -1054,9 +1057,9 @@
   border-radius: 9px;
 }
 
-.footer-brand .brand-mark svg {
-  width: 18px;
-  height: 18px;
+.footer-brand .brand-monogram {
+  font-size: 10px;
+  font-family: --var(--mono);
 }
 
 .footer-note {
