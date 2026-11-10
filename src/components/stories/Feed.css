@@ -1,0 +1,276 @@
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.stories-section {
+  padding: 21px 0 85px;
+  border-top: 1px solid rgba(68, 61, 108, 0.08);
+}
+
+.section-heading {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  margin: 27px 0 25px 29px;
+}
+
+.section-eyebrow {
+  font-size: 8px;
+}
+
+.section-heading h2 {
+  margin: 11px 0 6px;
+  color: #29263f;
+  font-size: 29px;
+  font-weight: 580;
+  letter-spacing: -1.3px;
+}
+
+.section-subtitle {
+  color: #89869b;
+  font-size: 11px;
+}
+
+.story-count {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 13px;
+  border: 1px solid rgba(102, 91, 154, 0.1);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.47);
+  color: #828095;
+  font-size: 9px;
+}
+
+.count-spark {
+  color: #8174d3;
+  font-size: 13px;
+}
+
+.feed-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 290px;
+  align-items: start;
+  gap: 22px;
+  margin: 0 4px;
+}
+
+.feed-toolbar {
+  min-height: 46px;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+}
+
+.filter-tabs {
+  display: flex;
+  gap: 5px;
+}
+
+.filter-tab {
+  padding: 8px 11px;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  color: #8c899e;
+  background: transparent;
+  cursor: pointer;
+  font: inherit;
+  font-size: 9px;
+  transition: 0.2s ease;
+}
+
+.filter-tab:hover {
+  color: #5f54a7;
+}
+
+.filter-tab.active {
+  border-color: rgba(112, 96, 215, 0.15);
+  background: rgba(255, 255, 255, 0.75);
+  color: #6256b2;
+  box-shadow: 0 3px 10px rgba(78, 64, 149, 0.05);
+  font-weight: 650;
+}
+
+.feed-sort {
+  padding-top: 11px;
+  color: #a09dae;
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: 0.8px;
+}
+
+.feed-sort span {
+  margin-left: 5px;
+  color: #8174d3;
+}
+
+.feed-state,
+.empty-feed {
+  min-height: 250px;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+}
+
+.feed-state {
+  gap: 10px;
+  color: #8d899e;
+  font-size: 11px;
+}
+
+.loader {
+  width: 19px;
+  height: 19px;
+  border: 2px solid rgba(112, 96, 215, 0.17);
+  border-top-color: #7567d1;
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+}
+
+.empty-feed {
+  padding: 34px;
+  border-radius: 18px;
+}
+
+.empty-icon {
+  width: 40px;
+  height: 40px;
+  display: grid;
+  place-items: center;
+  border-radius: 14px;
+  background: #efedff;
+  color: #7769d2;
+  font-size: 19px;
+}
+
+.empty-feed h3 {
+  margin: 15px 0 7px;
+  color: #3b3752;
+  font-size: 15px;
+  font-weight: 620;
+  letter-spacing: -0.35px;
+}
+
+.empty-feed p {
+  max-width: 335px;
+  color: #89869b;
+  font-size: 10px;
+  line-height: 1.8;
+}
+
+.empty-feed .text-link {
+  margin-top: 13px;
+  font-size: 10px;
+}
+
+:root[data-theme="dark"] .stories-section {
+  border-color: rgba(214, 205, 244, 0.11);
+}
+
+:root[data-theme="dark"] .section-heading h2,
+:root[data-theme="dark"] .empty-feed h3 {
+  color: #f0edf9;
+}
+
+:root[data-theme="dark"] .section-subtitle {
+  color: #b2aec3;
+}
+
+:root[data-theme="dark"] .feed-sort {
+  color: #9e99b2;
+}
+
+:root[data-theme="dark"] .story-count,
+:root[data-theme="dark"] .filter-tab.active {
+  border-color: rgba(183, 169, 255, 0.2);
+  background: rgba(55, 49, 78, 0.68);
+  color: #c6bbff;
+}
+
+:root[data-theme="dark"] .filter-tab {
+  color: #a7a2ba;
+}
+
+:root[data-theme="dark"] .filter-tab:hover {
+  color: #d0c7ff;
+}
+
+:root[data-theme="dark"] .empty-icon {
+  background: rgba(133, 116, 218, 0.2);
+  color: #c0b4ff;
+}
+
+@media (max-width: 900px) {
+  .feed-layout {
+    grid-template-columns: minmax(0, 1fr) 240px;
+    gap: 14px;
+  }
+}
+
+@media (max-width: 680px) {
+  .stories-section {
+    padding: 17px 0 58px;
+  }
+
+  .section-heading {
+    align-items: flex-start;
+    gap: 14px;
+    margin: 23px 0 20px 2px;
+  }
+
+  .section-heading h2 {
+    font-size: 26px;
+  }
+
+  .story-count {
+    gap: 5px;
+    margin-top: 17px;
+    padding: 8px 9px;
+    white-space: nowrap;
+    font-size: 8px;
+  }
+
+  .feed-layout {
+    grid-template-columns: 1fr;
+    gap: 16px;
+    margin: 0;
+  }
+
+  .feed-toolbar {
+    min-height: 43px;
+  }
+
+  .filter-tabs {
+    gap: 1px;
+  }
+
+  .filter-tab {
+    padding: 8px 9px;
+    font-size: 8px;
+  }
+
+  .feed-sort {
+    font-size: 7px;
+    letter-spacing: 0.5px;
+  }
+}
+
+@media (max-width: 390px) {
+  .story-count {
+    max-width: 100px;
+    white-space: normal;
+    line-height: 1.4;
+  }
+}
+
+.feed-layout {
+  display: block;
+  max-width: 790px;
+  margin: 0 auto;
+}

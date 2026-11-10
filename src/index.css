@@ -84,3 +84,15 @@ button {
     ),
     linear-gradient(180deg, #171621 0%, #111119 100%);
 }
+
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-thumb {
+  background: #35305c;
+  border-radius: 99px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}

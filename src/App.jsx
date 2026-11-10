@@ -1,68 +1,25 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
+import { AnimatePresence, MotionConfig, motion } from "motion/react";
+import { AccountPage } from "./components/pages/Account.jsx";
+import { AboutPage } from "./components/pages/About.jsx";
 import { firebaseConfigured } from "./lib/firebase-config.js";
+import { Header } from "./components/layout/Header.jsx";
+import { Footer } from "./components/layout/Footer.jsx";
+import { Home } from "./components/home/Home.jsx";
+import { Feed } from "./components/stories/Feed.jsx";
+import { VerificationPage } from "./components/pages/Verification.jsx";
+import { ProfilePage } from "./components/pages/Profile.jsx";
 import "./App.css";
 
-const filters = [
-  { value: "all", label: "All stories" },
-  { value: "quit", label: "I quit" },
-  { value: "fired", label: "I was let go" },
-];
-
-function BrandMark() {
-  return (
-    <span className="brand-mark" aria-hidden="true">
-      <span className="brand-monogram">LO</span>
-    </span>
-  );
+function getCurrentRoute() {
+  const route = window.location.hash.replace(/^#\/?/, "").split("?")[0];
+  return ["about", "signin", "signup", "verify", "profile"].includes(route)
+    ? route
+    : "home";
 }
 
-function ArrowIcon() {
-  return (
-    <svg viewBox="0 0 20 20" fill="none" aria-hidden="true">
-      <path
-        d="M4.2 10h11.6m-5-5 5 5-5 5"
-        stroke="currentColor"
-        strokeWidth="1.8"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
-  );
-}
-
-function ThemeIcon({ theme }) {
-  return theme === "dark" ? (
-    <svg viewBox="0 0 20 20" fill="none" aria-hidden="true">
-      <circle cx="10" cy="10" r="3.3" stroke="currentColor" strokeWidth="1.5" />
-      <path
-        d="M10 2.5v1.7m0 11.6v1.7M17.5 10h-1.7M4.2 10H2.5m12.8-5.3-1.2 1.2M5.9 14.1l-1.2 1.2m10.6 0-1.2-1.2M5.9 5.9 4.7 4.7"
-        stroke="currentColor"
-        strokeWidth="1.5"
-        strokeLinecap="round"
-      />
-    </svg>
-  ) : (
-    <svg viewBox="0 0 20 20" fill="none" aria-hidden="true">
-      <path
-        d="M16.4 12.2A6.7 6.7 0 0 1 7.8 3.6a6.8 6.8 0 1 0 8.6 8.6Z"
-        stroke="currentColor"
-        strokeWidth="1.5"
-        strokeLinejoin="round"
-      />
-      <path
-        d="m13.8 3 .4 1.2 1.2.4-1.2.4-.4 1.2-.4-1.2-1.2-.4 1.2-.4.4-1.2Z"
-        fill="currentColor"
-      />
-    </svg>
-  );
-}
-
-function formatDate(timestamp) {
-  if (!timestamp?.toDate) return "Just now";
-  return new Intl.DateTimeFormat("en", {
-    month: "short",
-    day: "numeric",
-  }).format(timestamp.toDate());
+function pendingUsernameKey(uid) {
+  return `linkedout-pending-username-${uid}`;
 }
 
 function App() {
@@ -76,9 +33,15 @@ function App() {
   const [authUser, setAuthUser] = useState(null);
   const [firebaseApi, setFirebaseApi] = useState(null);
   const [authLoading, setAuthLoading] = useState(firebaseConfigured);
+  const [accountLoading, setAccountLoading] = useState(false);
   const [username, setUsername] = useState("");
   const [usernameInput, setUsernameInput] = useState("");
   const [usernameLoading, setUsernameLoading] = useState(false);
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [authError, setAuthError] = useState("");
+  const [authStatus, setAuthStatus] = useState("");
+  const [route, setRoute] = useState(getCurrentRoute);
   const [company, setCompany] = useState("");
   const [message, setMessage] = useState("");
   const [outcome, setOutcome] = useState("quit");
@@ -88,7 +51,14 @@ function App() {
   const [filter, setFilter] = useState("all");
   const [notice, setNotice] = useState(null);
   const [firebaseError, setFirebaseError] = useState("");
-  const [authAttempt, setAuthAttempt] = useState(0);
+
+  useEffect(() => {
+    function updateRoute() {
+      setRoute(getCurrentRoute());
+    }
+    window.addEventListener("hashchange", updateRoute);
+    return () => window.removeEventListener("hashchange", updateRoute);
+  }, []);
 
   useEffect(() => {
     if (!firebaseConfigured) return undefined;
@@ -99,27 +69,16 @@ function App() {
       .then((api) => {
         if (!active) return;
         setFirebaseApi(api);
-        unsubscribe = api.subscribeToAnonymousUser(
-          async (user) => {
+        unsubscribe = api.subscribeToUser(
+          (user) => {
             if (!active) return;
             setAuthUser(user);
-            setFirebaseError("");
-            try {
-              const profile = await api.getUserProfile(user.uid);
-              if (active && profile) {
-                setUsername(profile.username);
-                setUsernameInput(profile.username);
-              }
-            } catch (error) {
-              if (active) {
-                setNotice({
-                  type: "error",
-                  text: `Could not load your profile: ${api.getFirestoreErrorMessage(error)}`,
-                });
-              }
-            } finally {
-              if (active) setAuthLoading(false);
+            if (!user?.emailVerified) setUsername("");
+            if (user && ["signin", "signup"].includes(getCurrentRoute())) {
+              setRoute(user.emailVerified ? "home" : "verify");
             }
+            setFirebaseError("");
+            setAuthLoading(false);
           },
           (error) => {
             if (active) {
@@ -127,7 +86,7 @@ function App() {
               setFirebaseError(message);
               setNotice({
                 type: "error",
-                text: `Could not start an anonymous session: ${message}`,
+                text: `Could not connect to your account: ${message}`,
               });
               setAuthLoading(false);
               setPostsLoading(false);
@@ -151,7 +110,39 @@ function App() {
       active = false;
       unsubscribe();
     };
-  }, [authAttempt]);
+  }, []);
+
+  useEffect(() => {
+    if (!authUser || !authUser.emailVerified || !firebaseApi) {
+      return undefined;
+    }
+
+    let active = true;
+    firebaseApi
+      .getUserProfile(authUser.uid)
+      .then((profile) => {
+        if (!active) return;
+        const profileUsername = profile?.username || "";
+        setUsername(profileUsername);
+        setUsernameInput(
+          profileUsername ||
+            window.localStorage.getItem(pendingUsernameKey(authUser.uid)) ||
+            "",
+        );
+      })
+      .catch((error) => {
+        if (active) {
+          setNotice({
+            type: "error",
+            text: `Could not load your profile: ${firebaseApi.getFirestoreErrorMessage(error)}`,
+          });
+        }
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [authUser, firebaseApi]);
 
   useEffect(() => {
     if (!firebaseApi) return undefined;
@@ -175,13 +166,6 @@ function App() {
     return unsubscribe;
   }, [firebaseApi]);
 
-  const filteredPosts = useMemo(
-    () =>
-      filter === "all"
-        ? posts
-        : posts.filter((post) => post.outcome === filter),
-    [filter, posts],
-  );
   const storyCharactersRemaining = Math.max(0, 20 - message.trim().length);
 
   useEffect(() => {
@@ -193,38 +177,177 @@ function App() {
     setTheme((currentTheme) => (currentTheme === "light" ? "dark" : "light"));
   }
 
+  function navigate(nextRoute) {
+    const nextHash = `#/${nextRoute}`;
+    if (window.location.hash === nextHash) {
+      setRoute(nextRoute);
+      window.scrollTo({ top: 0, behavior: "smooth" });
+      return;
+    }
+    window.location.hash = nextHash;
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+
+  async function continueWithVerifiedAccount(user) {
+    const profile = await firebaseApi.getUserProfile(user.uid);
+    if (profile?.username) {
+      window.localStorage.removeItem(pendingUsernameKey(user.uid));
+      setUsername(profile.username);
+      setUsernameInput(profile.username);
+      navigate("home");
+      return;
+    }
+
+    const pendingUsername =
+      window.localStorage.getItem(pendingUsernameKey(user.uid)) || "";
+    if (!pendingUsername) {
+      setUsernameInput("");
+      navigate("profile");
+      return;
+    }
+
+    try {
+      const claimed = await firebaseApi.claimUsername(user.uid, pendingUsername);
+      window.localStorage.removeItem(pendingUsernameKey(user.uid));
+      setUsername(claimed);
+      setUsernameInput(claimed);
+      navigate("home");
+    } catch (error) {
+      setUsernameInput(pendingUsername);
+      setAuthError(firebaseApi.getFirestoreErrorMessage(error));
+      navigate("profile");
+    }
+  }
+
+  async function handleAccountSubmit(event) {
+    event.preventDefault();
+    if (!firebaseApi) return;
+    setAccountLoading(true);
+    setAuthError("");
+    setAuthStatus("");
+    try {
+      if (route === "signup") {
+        const credential = await firebaseApi.createAccount(email, password);
+        setEmail("");
+        setPassword("");
+        const requestedUsername = usernameInput.trim().toLowerCase();
+        window.localStorage.setItem(
+          pendingUsernameKey(credential.user.uid),
+          requestedUsername,
+        );
+        navigate("verify");
+        try {
+          await firebaseApi.sendVerificationEmail(credential.user);
+          setAuthStatus(
+            `We sent a verification link to ${credential.user.email}. Verify your email to claim @${requestedUsername}.`,
+          );
+        } catch (error) {
+          setAuthError(firebaseApi.getAuthErrorMessage(error));
+        }
+      } else {
+        const credential = await firebaseApi.signIn(email, password);
+        setEmail("");
+        setPassword("");
+        if (!credential.user.emailVerified) {
+          navigate("verify");
+          setAuthStatus(
+            `Please verify ${credential.user.email} before continuing.`,
+          );
+          return;
+        }
+
+        await continueWithVerifiedAccount(credential.user);
+      }
+    } catch (error) {
+      setAuthError(firebaseApi.getAuthErrorMessage(error));
+    } finally {
+      setAccountLoading(false);
+    }
+  }
+
+  async function handleVerificationCheck() {
+    if (!authUser || !firebaseApi) return;
+    setAccountLoading(true);
+    setAuthError("");
+    try {
+      const refreshedUser = await firebaseApi.refreshUser(authUser);
+      setAuthUser(refreshedUser);
+      if (!refreshedUser.emailVerified) {
+        setAuthError(
+          "Your email is not verified yet. Check your inbox, then try again.",
+        );
+        return;
+      }
+
+      await continueWithVerifiedAccount(refreshedUser);
+    } catch (error) {
+      setAuthError(firebaseApi.getAuthErrorMessage(error));
+    } finally {
+      setAccountLoading(false);
+    }
+  }
+
+  async function handleResendVerification() {
+    if (!authUser || !firebaseApi) return;
+    setAccountLoading(true);
+    setAuthError("");
+    setAuthStatus("");
+    try {
+      await firebaseApi.sendVerificationEmail(authUser);
+      setAuthStatus(
+        `A new verification link is on its way to ${authUser.email}.`,
+      );
+    } catch (error) {
+      setAuthError(firebaseApi.getAuthErrorMessage(error));
+    } finally {
+      setAccountLoading(false);
+    }
+  }
+
   async function handleUsernameSubmit(event) {
     event.preventDefault();
-    if (!authUser || !firebaseApi) return;
+    if (!authUser || !firebaseApi || !authUser.emailVerified) return;
     setUsernameLoading(true);
-    setNotice(null);
+    setAuthError("");
     try {
       const claimed = await firebaseApi.claimUsername(
         authUser.uid,
         usernameInput,
       );
+      window.localStorage.removeItem(pendingUsernameKey(authUser.uid));
       setUsername(claimed);
       setUsernameInput(claimed);
       setNotice({
         type: "success",
-        text: `You're in as @${claimed}. Your real identity stays out of it.`,
+        text: `You're in as @${claimed}. Your email stays private.`,
       });
+      navigate("home");
     } catch (error) {
-      setNotice({
-        type: "error",
-        text: firebaseApi.getFirestoreErrorMessage(error),
-      });
+      setAuthError(firebaseApi.getFirestoreErrorMessage(error));
     } finally {
       setUsernameLoading(false);
     }
   }
 
-  function retryAnonymousSession() {
-    setNotice(null);
-    setFirebaseError("");
-    setAuthLoading(true);
-    setPostsLoading(true);
-    setAuthAttempt((attempt) => attempt + 1);
+  async function handleLogout() {
+    if (!firebaseApi) return;
+    setAccountLoading(true);
+    try {
+      await firebaseApi.signOutUser();
+      setUsername("");
+      setUsernameInput("");
+      setEmail("");
+      setPassword("");
+      setNotice({ type: "success", text: "You’ve been signed out." });
+      navigate("home");
+    } catch (error) {
+      setNotice({
+        type: "error",
+        text: `Could not sign out: ${firebaseApi.getAuthErrorMessage(error)}`,
+      });
+    } finally {
+      setAccountLoading(false);
+    }
   }
 
   async function handlePostSubmit(event) {
@@ -256,427 +379,116 @@ function App() {
   }
 
   return (
-    <div className="app-shell">
-      <header className="topbar">
-        <a className="brand" href="#" aria-label="LinkedOut home">
-          <BrandMark />
-          <span>
-            linked<span className="brand-light">out</span>
-          </span>
-        </a>
-        <nav className="top-nav" aria-label="Main navigation">
-          <a href="#stories">The stories</a>
-          <a href="#about">Our promise</a>
-        </nav>
-        <div className="topbar-end">
-          {username ? (
-            <span className="handle-pill">
-              <span className="online-dot" /> @{username}
-            </span>
-          ) : (
-            <a className="nav-cta" href="#join">
-              Join anonymously <ArrowIcon />
-            </a>
-          )}
-          <button
-            className="theme-toggle"
-            type="button"
-            onClick={toggleTheme}
-            aria-label={`Switch to ${theme === "light" ? "dark" : "light"} theme`}
-            aria-pressed={theme === "dark"}
-            title={`Switch to ${theme === "light" ? "dark" : "light"} theme`}
-          >
-            <ThemeIcon theme={theme} />
-          </button>
-        </div>
-      </header>
+    <MotionConfig reducedMotion="user">
+      <div className="app-shell">
+        <Header
+          authUser={authUser}
+          username={username}
+          accountLoading={accountLoading}
+          handleLogout={handleLogout}
+          theme={theme}
+          toggleTheme={toggleTheme}
+        />
 
-      <main>
-        <section className="hero-section">
-          <div className="hero-copy">
-            <div className="eyebrow">
-              <span className="eyebrow-dot" /> THE EXIT INTERVIEW, AFTER THE
-              EXIT
-            </div>
-            <h1>
-              The truth doesn’t fit in an <span>exit interview.</span>
-            </h1>
-            <p className="hero-description">
-              The unfiltered stories behind the jobs we left — and the ones that
-              let us go. No names. No career-polished answers. Just the truth.
-            </p>
-            <a className="text-link" href="#stories">
-              Read the stories <ArrowIcon />
-            </a>
-            <div className="hero-proof">
-              <div className="avatar-stack" aria-hidden="true">
-                <span>✳</span>
-                <span>↗</span>
-                <span>◒</span>
-                <span>+</span>
-              </div>
-              <span>A little less alone, one story at a time.</span>
-            </div>
-          </div>
-
-          <div className="glass-panel join-panel" id="join">
-            {!firebaseConfigured ? (
-              <div className="setup-state">
-                <div className="panel-icon setup-icon" aria-hidden="true">
-                  ✦
-                </div>
-                <p className="panel-kicker">ONE LAST THING</p>
-                <h2>Connect the story room.</h2>
-                <p className="panel-description">
-                  Add your Firebase web app settings to <code>.env</code> to
-                  enable anonymous accounts and the live story feed.
-                </p>
-                <span className="setup-tag">Firebase setup required</span>
-              </div>
-            ) : !username ? (
-              <>
-                <div className="panel-heading">
-                  <div className="panel-icon" aria-hidden="true">
-                    ✳
-                  </div>
-                  <span className="step-count">01 / 02</span>
-                </div>
-                <p className="panel-kicker">YOUR NAME, NOT YOUR NAME</p>
-                <h2>
-                  Come as you are.
-                  <br />
-                  Leave your name at the door.
-                </h2>
-                <p className="panel-description">
-                  Pick a one-of-a-kind handle. No email, password, or LinkedIn
-                  profile required.
-                </p>
-                <form className="form-stack" onSubmit={handleUsernameSubmit}>
-                  <label htmlFor="username">Your anonymous handle</label>
-                  <div className="input-wrap handle-input">
-                    <span aria-hidden="true">@</span>
-                    <input
-                      id="username"
-                      name="username"
-                      autoComplete="off"
-                      maxLength={20}
-                      minLength={3}
-                      pattern="[A-Za-z0-9_]{3,20}"
-                      placeholder="quietly_done"
-                      value={usernameInput}
-                      onChange={(event) => setUsernameInput(event.target.value)}
-                      required
-                      disabled={authLoading || !authUser}
-                    />
-                  </div>
-                  <p className="field-hint">
-                    3–20 characters · letters, numbers, and underscores
-                  </p>
-                  <button
-                    className="primary-button"
-                    type={authUser ? "submit" : "button"}
-                    onClick={
-                      !authUser && !authLoading
-                        ? retryAnonymousSession
-                        : undefined
-                    }
-                    disabled={
-                      authLoading ||
-                      (authUser && (usernameLoading || !usernameInput.trim()))
-                    }
-                  >
-                    {authLoading
-                      ? "Starting a private session…"
-                      : !authUser
-                        ? "Retry private session"
-                        : usernameLoading
-                          ? "Checking availability…"
-                          : "Find my people"}
-                    {!authLoading && authUser && !usernameLoading && (
-                      <ArrowIcon />
-                    )}
-                  </button>
-                </form>
-                <p className="privacy-note">
-                  <span>◇</span> Your handle is the only thing that identifies
-                  you here.
-                </p>
-              </>
-            ) : (
-              <>
-                <div className="panel-heading">
-                  <div className="panel-icon" aria-hidden="true">
-                    ↗
-                  </div>
-                  <span className="step-count">02 / 02</span>
-                </div>
-                <p className="panel-kicker">LET IT OUT</p>
-                <h2>Your side of the story.</h2>
-                <p className="panel-description">
-                  Keep it honest. Keep it anonymous. Leave out names and details
-                  that could identify a person. There’s no one-story limit; the
-                  form clears after each post so you can share another.
-                </p>
-                <form
-                  className="form-stack post-form"
-                  onSubmit={handlePostSubmit}
-                >
-                  <label htmlFor="company">
-                    Company{" "}
-                    <span className="label-optional">— as you remember it</span>
-                  </label>
-                  <input
-                    className="text-input"
-                    id="company"
-                    name="company"
-                    autoComplete="organization"
-                    maxLength={80}
-                    placeholder="Where did it happen?"
-                    value={company}
-                    onChange={(event) => setCompany(event.target.value)}
-                    required
-                  />
-                  <fieldset className="outcome-fieldset">
-                    <legend>How did it end?</legend>
-                    <div className="outcome-options">
-                      <label
-                        className={`outcome-option ${outcome === "quit" ? "selected" : ""}`}
-                      >
-                        <input
-                          type="radio"
-                          name="outcome"
-                          value="quit"
-                          checked={outcome === "quit"}
-                          onChange={() => setOutcome("quit")}
-                        />
-                        <span className="radio-dot" /> I quit
-                      </label>
-                      <label
-                        className={`outcome-option ${outcome === "fired" ? "selected" : ""}`}
-                      >
-                        <input
-                          type="radio"
-                          name="outcome"
-                          value="fired"
-                          checked={outcome === "fired"}
-                          onChange={() => setOutcome("fired")}
-                        />
-                        <span className="radio-dot" /> I was let go
-                      </label>
-                    </div>
-                  </fieldset>
-                  <label htmlFor="story">What really happened?</label>
-                  <textarea
-                    id="story"
-                    name="story"
-                    autoComplete="off"
-                    maxLength={2000}
-                    minLength={20}
-                    placeholder="The moment you knew. The thing nobody asked about. What you wish you could have said…"
-                    value={message}
-                    onChange={(event) => setMessage(event.target.value)}
-                    required
-                  />
-                  <div className="textarea-meta">
-                    <span aria-live="polite">
-                      {storyCharactersRemaining > 0
-                        ? `${storyCharactersRemaining} more ${storyCharactersRemaining === 1 ? "character" : "characters"} needed to share`
-                        : "Ready to share"}
-                    </span>
-                    <span>{message.trim().length} / 2,000</span>
-                  </div>
-                  <button
-                    className="primary-button"
-                    type="submit"
-                    disabled={
-                      postLoading ||
-                      !company.trim() ||
-                      message.trim().length < 20
-                    }
-                  >
-                    {postLoading ? "Sharing your story…" : "Share anonymously"}
-                    {!postLoading && <ArrowIcon />}
-                  </button>
-                </form>
-              </>
-            )}
-          </div>
-        </section>
-
-        {notice && (
-          <div
-            className={`notice notice-${notice.type}`}
-            role={notice.type === "error" ? "alert" : "status"}
-          >
-            <span>{notice.type === "error" ? "!" : "✓"}</span>
-            <p>{notice.text}</p>
-            <button
-              type="button"
-              aria-label="Dismiss message"
-              onClick={() => setNotice(null)}
+        <main>
+          <AnimatePresence mode="wait" initial={false}>
+            <motion.div
+              key={route}
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -5 }}
+              transition={{ duration: 0.22, ease: "easeOut" }}
             >
-              ×
-            </button>
-          </div>
-        )}
-
-        <section className="stories-section" id="stories">
-          <div className="section-heading">
-            <div>
-              <p className="eyebrow section-eyebrow">
-                <span className="eyebrow-dot" /> OUT OF OFFICE, INTO THE OPEN
-              </p>
-              <h2>It wasn’t just you.</h2>
-              <p className="section-subtitle">
-                A little clarity from people who’ve been there.
-              </p>
-            </div>
-            <div className="story-count">
-              <span className="count-spark">✳</span>
-              {posts.length} {posts.length === 1 ? "story" : "stories"} shared
-            </div>
-          </div>
-
-          <div className="feed-layout">
-            <div className="feed-column">
-              <div className="feed-toolbar">
-                <div
-                  className="filter-tabs"
-                  role="group"
-                  aria-label="Filter stories"
-                >
-                  {filters.map((item) => (
-                    <button
-                      className={
-                        filter === item.value
-                          ? "filter-tab active"
-                          : "filter-tab"
-                      }
-                      key={item.value}
-                      type="button"
-                      onClick={() => setFilter(item.value)}
-                      aria-pressed={filter === item.value}
-                    >
-                      {item.label}
-                    </button>
-                  ))}
-                </div>
-                <span className="feed-sort">
-                  LATEST FIRST <span aria-hidden="true">↘</span>
-                </span>
-              </div>
-
-              {postsLoading ? (
-                <div className="feed-state">
-                  <span className="loader" /> Gathering the stories…
-                </div>
-              ) : filteredPosts.length ? (
-                <div className="story-list">
-                  {filteredPosts.map((post) => (
-                    <article className="story-card glass-panel" key={post.id}>
-                      <div className="story-card-top">
-                        <div className="story-author">
-                          <span
-                            className={`author-avatar avatar-${post.outcome}`}
-                            aria-hidden="true"
-                          >
-                            {post.outcome === "quit" ? "↗" : "✳"}
-                          </span>
-                          <div>
-                            <span className="author-name">
-                              @{post.username}
-                            </span>
-                            <span className="story-date">
-                              {formatDate(post.createdAt)}
-                            </span>
-                          </div>
-                        </div>
-                        <span className={`outcome-badge badge-${post.outcome}`}>
-                          {post.outcome === "quit" ? "I quit" : "I was let go"}
-                        </span>
-                      </div>
-                      <p className="story-company">{post.company}</p>
-                      <p className="story-message">{post.message}</p>
-                      <div className="story-card-bottom">
-                        <span>SHARED ANONYMOUSLY</span>
-                        <span className="story-spark" aria-hidden="true">
-                          ✳
-                        </span>
-                      </div>
-                    </article>
-                  ))}
-                </div>
+              {route === "about" ? (
+                <AboutPage />
+              ) : route === "signin" || route === "signup" ? (
+                <AccountPage
+                  mode={route}
+                  email={email}
+                  onEmailChange={setEmail}
+                  password={password}
+                  onPasswordChange={setPassword}
+                  username={usernameInput}
+                  onUsernameChange={setUsernameInput}
+                  configured={firebaseConfigured}
+                  connectionError={firebaseError}
+                  loading={accountLoading || !firebaseApi}
+                  error={authError}
+                  onSubmit={handleAccountSubmit}
+                />
+              ) : route === "verify" ? (
+                <VerificationPage
+                  authUser={authUser}
+                  authStatus={authStatus}
+                  authError={authError}
+                  firebaseError={firebaseError}
+                  accountLoading={accountLoading}
+                  handleVerificationCheck={handleVerificationCheck}
+                  handleResendVerification={handleResendVerification}
+                />
+              ) : route === "profile" ? (
+                <ProfilePage
+                  firebaseError={firebaseError}
+                  authUser={authUser}
+                  usernameInput={usernameInput}
+                  setUsernameInput={setUsernameInput}
+                  authError={authError}
+                  usernameLoading={usernameLoading}
+                  handleUsernameSubmit={handleUsernameSubmit}
+                />
               ) : (
-                <div className="empty-feed glass-panel">
-                  <span className="empty-icon" aria-hidden="true">
-                    ↗
-                  </span>
-                  <h3>
-                    {firebaseError
-                      ? "Story feed unavailable."
-                      : filter === "all"
-                        ? "The first story is yours."
-                        : "No stories in this corner yet."}
-                  </h3>
-                  <p>
-                    {!firebaseConfigured
-                      ? "Connect a Firebase project to open the story feed. No placeholder stories here — only the real thing."
-                      : firebaseError
-                        ? "The story feed is temporarily unavailable. Check your Firebase configuration and connection, then try again."
-                        : "This space is new. When someone is ready to share, their words will find a home here."}
-                  </p>
-                  {username && (
-                    <a className="text-link" href="#join">
-                      Tell your story <ArrowIcon />
-                    </a>
+                <>
+                  <Home
+                    authLoading={authLoading}
+                    authUser={authUser}
+                    username={username}
+                    company={company}
+                    setCompany={setCompany}
+                    outcome={outcome}
+                    setOutcome={setOutcome}
+                    message={message}
+                    setMessage={setMessage}
+                    storyCharactersRemaining={storyCharactersRemaining}
+                    postLoading={postLoading}
+                    handlePostSubmit={handlePostSubmit}
+                  />
+
+                  {notice && (
+                    <div
+                      className={`notice notice-${notice.type}`}
+                      role={notice.type === "error" ? "alert" : "status"}
+                    >
+                      <span>{notice.type === "error" ? "!" : "✓"}</span>
+                      <p>{notice.text}</p>
+                      <button
+                        type="button"
+                        aria-label="Dismiss message"
+                        onClick={() => setNotice(null)}
+                      >
+                        ×
+                      </button>
+                    </div>
                   )}
-                </div>
+
+                  <Feed
+                    posts={posts}
+                    filter={filter}
+                    setFilter={setFilter}
+                    postsLoading={postsLoading}
+                    firebaseError={firebaseError}
+                    firebaseConfigured={firebaseConfigured}
+                    username={username}
+                    firebaseApi={firebaseApi}
+                  />
+                </>
               )}
-            </div>
+            </motion.div>
+          </AnimatePresence>
+        </main>
 
-            <aside className="about-card glass-panel" id="about">
-              <div className="about-decoration" aria-hidden="true">
-                ✳
-              </div>
-              <p className="panel-kicker">A NOTE FROM US</p>
-              <h3>Some things are easier to say after you’ve left.</h3>
-              <p>
-                This is a place for the truth behind the goodbye. Your handle is
-                made up; your story is yours.
-              </p>
-              <div className="about-divider" />
-              <ul>
-                <li>
-                  <span>01</span>No real names or identifying details.
-                </li>
-                <li>
-                  <span>02</span>Speak from your own experience.
-                </li>
-                <li>
-                  <span>03</span>Take care of each other in here.
-                </li>
-              </ul>
-              <a href="#join" className="about-link">
-                Make space for your story <ArrowIcon />
-              </a>
-            </aside>
-          </div>
-        </section>
-      </main>
-
-      <footer className="footer">
-        <a className="brand footer-brand" href="#" aria-label="LinkedOut home">
-          <BrandMark />
-          <span>
-            linked<span className="brand-light">out</span>
-          </span>
-        </a>
-        <span>For the stories that don’t make it onto your résumé.</span>
-        <span className="footer-note">
-          ANONYMOUS BY DESIGN <span aria-hidden="true">✳</span>
-        </span>
-      </footer>
-    </div>
+        <Footer />
+      </div>
+    </MotionConfig>
   );
 }
 
